@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OffData - Aplicación Móvil de Registro Offline-First</title>
+  <meta name="description" content="OffData: Aplicación móvil para captura, gestión y sincronización de registros de personas sin conexión a Internet con SQLite y Supabase.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="assets/app_logo.png">
+</head>
+<body>
+
+  <!-- Background Glowing Orbs -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="#" class="logo-group">
+        <img src="assets/app_logo.png" alt="Logo OffData" class="logo-img" />
+        <span class="logo-text">OffData<span class="logo-accent">.</span></span>
+      </a>
+      <nav class="nav-links">
+        <a href="#caracteristicas">Características</a>
+        <a href="#como-funciona">Cómo Funciona</a>
+        <a href="#instalacion">Instalación</a>
+      </nav>
+      <div class="nav-cta">
+        <a href="downloads/offdata.apk" download="offdata.apk" class="btn btn-primary btn-sm">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Descargar APK
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container hero-container">
+      <div class="hero-content">
+        <div class="badge-pill">
+          <span class="badge-dot"></span>
+          <span>Versión 1.0.0 Lista para Descargar</span>
+        </div>
+        <h1 class="hero-title">
+          Registro y Gestión de Datos <span class="gradient-text">100% Offline-First</span>
+        </h1>
+        <p class="hero-description">
+          Captura información de personas en campo sin preocuparte por la señal de Internet. OffData almacena todo con seguridad en tu dispositivo mediante SQLite local y sincroniza con la nube en cuanto recuperas conexión.
+        </p>
+
+        <div class="hero-actions">
+          <a href="downloads/offdata.apk" download="offdata.apk" class="btn btn-primary btn-lg" id="btn-download-hero">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Descargar APK Android</span>
+          </a>
+          <a href="#instalacion" class="btn btn-secondary btn-lg">
+            Guía de Instalación
+          </a>
+        </div>
+
+        <div class="hero-metrics">
+          <div class="metric-item">
+            <span class="metric-val">SQLite</span>
+            <span class="metric-lbl">Base de Datos Local</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-val">Supabase</span>
+            <span class="metric-lbl">Sincronización Cloud</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-val">100%</span>
+            <span class="metric-lbl">Disponibilidad Offline</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="app-mockup-wrapper">
+          <div class="mockup-header">
+            <div class="mockup-dot red"></div>
+            <div class="mockup-dot yellow"></div>
+            <div class="mockup-dot green"></div>
+            <span class="mockup-title">OffData Mobile Suite</span>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-card highlight">
+              <div class="card-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <div>
+                <h4>Registro Inteligente</h4>
+                <p>Cédula, nombre, celular validado y dirección estructurada.</p>
+              </div>
+            </div>
+
+            <div class="mockup-card">
+              <div class="card-icon-box orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+              </div>
+              <div>
+                <h4>Cola Offline</h4>
+                <p>Sincronización manual individual o masiva al conectar.</p>
+              </div>
+            </div>
+
+            <div class="mockup-card">
+              <div class="card-icon-box green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2">
+                  <path d="M12 20V10M18 20V4M6 20v-4"/>
+                </svg>
+              </div>
+              <div>
+                <h4>Métricas en Tiempo Real</h4>
+                <p>Estadísticas del día, semana y mes siempre disponibles.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="caracteristicas">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Diseñado para el Trabajo Real en Terreno</h2>
+        <p class="section-subtitle">
+          Todas las herramientas necesarias para registrar información de forma ágil, segura y sin depender de una red constante.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+          </div>
+          <h3>Almacenamiento Local SQLite</h3>
+          <p>Los datos se guardan al instante en tu teléfono. Trabaja en zonas rurales o sótanos sin pérdida de información.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 16 12 12 8 16"></polyline>
+              <line x1="12" y1="12" x2="12" y2="21"></line>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+            </svg>
+          </div>
+          <h3>Sincronización Flexible</h3>
+          <p>Si tienes Internet, sube de inmediato. Si estabas offline, revisa y sube los registros uno a uno o todos a la vez.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <polyline points="16 11 18 13 22 9"></polyline>
+            </svg>
+          </div>
+          <h3>Detección de Duplicados</h3>
+          <p>Identifica cédulas existentes y permite actualizar datos manteniendo inmutables el nombre y fecha de nacimiento.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 14 14"></polyline>
+            </svg>
+          </div>
+          <h3>Historial y Auditoría</h3>
+          <p>Guarda cada versión del registro y resalta en el historial qué datos cambiaron (dirección anterior vs nueva).</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+          </div>
+          <h3>Módulo de Estadísticas</h3>
+          <p>Gráficos y contadores de registros diarios, semanales y mensuales con aviso del estado de conexión.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3>Seguridad y Perfil</h3>
+          <p>Autenticación segura con cuenta de administrador, opción de cambio de contraseña y cierre de sesión.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it Works Section -->
+  <section class="how-it-works" id="como-funciona">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Flujo de Trabajo Simplificado</h2>
+        <p class="section-subtitle">Operación continua en tres sencillos pasos.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">01</div>
+          <h3>1. Registro de Datos</h3>
+          <p>Completa el formulario en tu teléfono con selector de fecha, validación de celular colombiano y dirección estructurada.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">02</div>
+          <h3>2. Almacenamiento Local</h3>
+          <p>La información queda respaldada en el SQLite local del dispositivo, sin importar si tienes o no cobertura celular.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">03</div>
+          <h3>3. Sincronización Cloud</h3>
+          <p>Al recuperar conexión, sincroniza de manera automática o mediante la pestaña Offline para enviar todo a Supabase.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download & Installation Section -->
+  <section class="installation" id="instalacion">
+    <div class="container">
+      <div class="install-box">
+        <div class="install-header">
+          <div>
+            <span class="badge-pill">Descarga Directa</span>
+            <h2>Instala OffData en tu Dispositivo Android</h2>
+            <p>Descarga el archivo ejecutable APK oficial y comienza a registrar en minutos.</p>
+          </div>
+          <div class="install-cta">
+            <a href="downloads/offdata.apk" download="offdata.apk" class="btn btn-primary btn-xl">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Descargar APK (v1.0.0)</span>
+            </a>
+            <span class="file-info">Android 7.0 (Nougat) o superior • APK oficial</span>
+          </div>
+        </div>
+
+        <div class="install-steps">
+          <div class="inst-step">
+            <div class="inst-num">1</div>
+            <div>
+              <h4>Permitir Orígenes Desconocidos</h4>
+              <p>Al abrir el archivo, si Android lo solicita, activa "Instalar aplicaciones de fuentes desconocidas" para tu navegador o explorador.</p>
+            </div>
+          </div>
+          <div class="inst-step">
+            <div class="inst-num">2</div>
+            <div>
+              <h4>Instalar la Aplicación</h4>
+              <p>Toca el archivo <code>offdata.apk</code> descargado y presiona <strong>Instalar</strong> (o <strong>Actualizar</strong> si ya tenías una versión previa).</p>
+            </div>
+          </div>
+          <div class="inst-step">
+            <div class="inst-num">3</div>
+            <div>
+              <h4>Iniciar Sesión</h4>
+              <p>Abre la app e inicia sesión con tu cuenta para comenzar a capturar y gestionar registros.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-left">
+        <div class="logo-group">
+          <img src="assets/app_logo.png" alt="Logo OffData" class="logo-img-sm" />
+          <span class="logo-text-sm">OffData</span>
+        </div>
+        <p class="footer-desc">Sistema de captura y sincronización de personas Offline-First con Flutter, SQLite y Supabase.</p>
+      </div>
+      <div class="footer-right">
+        <p>&copy; 2026 OffData. Todos los derechos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

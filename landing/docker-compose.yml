@@ -1,0 +1,7 @@
+services:
+  offdata-landing:
+    build: .
+    container_name: offdata_web
+    restart: always
+    ports:
+      - "80:80"
