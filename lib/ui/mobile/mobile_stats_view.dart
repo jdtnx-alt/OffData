@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/reporte_cambio.dart';
+import '../../providers/auth_provider.dart';
 import '../../repositories/persona_repository.dart';
 import '../widgets/network_badge.dart';
 
@@ -13,6 +15,7 @@ class MobileStatsView extends StatefulWidget {
 
 class _MobileStatsViewState extends State<MobileStatsView> {
   Map<String, dynamic>? _stats;
+  List<Map<String, dynamic>> _statsEncuestadores = [];
   bool _loading = true;
 
   @override
@@ -22,20 +25,45 @@ class _MobileStatsViewState extends State<MobileStatsView> {
   }
 
   Future<void> _cargarStats() async {
+    final auth = context.read<AuthProvider>();
     final repo = context.read<PersonaRepository>();
-    final stats = await repo.getEstadisticas();
-    if (mounted) setState(() { _stats = stats; _loading = false; });
+
+    final encId = auth.isAdmin ? null : auth.userId;
+    final stats = await repo.getEstadisticas(encuestadorId: encId);
+
+    List<Map<String, dynamic>> encuestadoresStats = [];
+    if (auth.isAdmin) {
+      encuestadoresStats = await repo.getEstadisticasPorEncuestador();
+    }
+
+    if (mounted) {
+      setState(() {
+        _stats = stats;
+        _statsEncuestadores = encuestadoresStats;
+        _loading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final repo = context.watch<PersonaRepository>();
+    final isAdmin = auth.isAdmin;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Estadísticas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('Métricas de Registro', style: TextStyle(fontSize: 11, color: Colors.white54)),
+            Text(
+              isAdmin ? 'Estadísticas Globales' : 'Mis Métricas',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            Text(
+              isAdmin ? 'Métricas de la Plataforma & Sync' : 'Rendimiento: ${auth.name}',
+              style: const TextStyle(fontSize: 11, color: Colors.white54),
+            ),
           ],
         ),
         actions: [
@@ -43,7 +71,10 @@ class _MobileStatsViewState extends State<MobileStatsView> {
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Actualizar métricas',
-            onPressed: () { setState(() => _loading = true); _cargarStats(); },
+            onPressed: () {
+              setState(() => _loading = true);
+              _cargarStats();
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -59,7 +90,7 @@ class _MobileStatsViewState extends State<MobileStatsView> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Aviso de datos no actualizados si está offline
+                  // Aviso offline
                   if (!widget.isOnline)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -75,7 +106,7 @@ class _MobileStatsViewState extends State<MobileStatsView> {
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Sin conexión — mostrando datos locales. Las estadísticas globales se actualizarán al reconectar.',
+                              'Sin conexión — mostrando datos locales. Las estadísticas se sincronizarán al reconectar.',
                               style: TextStyle(color: Colors.orange, fontSize: 11),
                             ),
                           ),
@@ -86,13 +117,13 @@ class _MobileStatsViewState extends State<MobileStatsView> {
                   // Tarjeta principal — TOTAL
                   _statCardGrande(
                     icon: Icons.people,
-                    label: 'Total de Personas Registradas',
+                    label: isAdmin ? 'Total Personas Registradas en Plataforma' : 'Personas Registradas por Mí',
                     value: '${_stats!['total']}',
                     color: Colors.blueAccent,
                   ),
                   const SizedBox(height: 14),
 
-                  // Grid de stats con aspect ratio corregido para evitar overflow
+                  // Grid de stats
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -120,51 +151,228 @@ class _MobileStatsViewState extends State<MobileStatsView> {
                         color: Colors.purpleAccent,
                       ),
                       _statCardChico(
-                        icon: Icons.update_outlined,
-                        label: 'Actualizaciones',
+                        icon: Icons.history,
+                        label: isAdmin ? 'Con Actualizaciones' : 'Mis Actualizaciones',
                         value: '${_stats!['con_actualizaciones']}',
                         color: Colors.orange,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                  // Tarjeta de Offline Pendientes
-                  if ((_stats!['pendientes_sync'] ?? 0) > 0)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                  // ─── ESTADO DE SINCRONIZACIÓN (ADMIN O ENCUESTADOR) ────────
+                  _seccion('Estado de Sincronización'),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: (_stats!['pendientes_sync'] ?? 0) > 0
+                          ? Colors.amber.withValues(alpha: 0.1)
+                          : Colors.green.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: (_stats!['pendientes_sync'] ?? 0) > 0
+                            ? Colors.amber.withValues(alpha: 0.4)
+                            : Colors.green.withValues(alpha: 0.3),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.sync_problem, color: Colors.amber, size: 28),
-                          const SizedBox(width: 12),
-                          Expanded(
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          (_stats!['pendientes_sync'] ?? 0) > 0 ? Icons.sync_problem : Icons.cloud_done,
+                          color: (_stats!['pendientes_sync'] ?? 0) > 0 ? Colors.amber : Colors.greenAccent,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${_stats!['pendientes_sync']} registros pendientes de sincronización',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: (_stats!['pendientes_sync'] ?? 0) > 0 ? Colors.amber : Colors.greenAccent,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isAdmin
+                                    ? 'Total acumulado en el sistema pendiente por subir al servidor central.'
+                                    : 'Registros que ingresaste sin internet y están guardados en tu dispositivo.',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ─── DESGLOSE POR ENCUESTADOR (SOLO ADMIN) ─────────────────
+                  if (isAdmin) ...[
+                    _seccion('Desglose de Registros & Sync por Encuestador'),
+                    if (_statsEncuestadores.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'No hay encuestadores activos con registros',
+                            style: TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                        ),
+                      )
+                    else
+                      ..._statsEncuestadores.map((enc) {
+                        final total = enc['total'] as int;
+                        final sinc = enc['sincronizados'] as int;
+                        final pend = enc['pendientes'] as int;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  '${_stats!['pendientes_sync']} registros pendientes offline',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber, fontSize: 13),
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: Colors.blueAccent.withValues(alpha: 0.15),
+                                      child: Text(
+                                        (enc['nombre'] as String).isNotEmpty ? (enc['nombre'] as String)[0].toUpperCase() : 'E',
+                                        style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            enc['nombre'] as String,
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                          Text(
+                                            enc['email'] as String,
+                                            style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (pend > 0)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                                        ),
+                                        child: Text(
+                                          '$pend pend.',
+                                          style: const TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                const Text(
-                                  'Revisa el apartado de Sincronización para subirlos.',
-                                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    _miniIndicador('Total', '$total', Colors.blueAccent),
+                                    const SizedBox(width: 8),
+                                    _miniIndicador('Sincronizados', '$sinc', Colors.greenAccent),
+                                    const SizedBox(width: 8),
+                                    _miniIndicador('Pendientes', '$pend', pend > 0 ? Colors.amber : Colors.white38),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      }),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Reportes de Actualizaciones entre Encuestadores (Solo Admin)
+                  if (isAdmin) ...[
+                    _seccion('Reportes de Modificaciones entre Encuestadores'),
+                    StreamBuilder<List<ReporteCambio>>(
+                      stream: repo.watchReportesCambios(),
+                      builder: (context, repSnapshot) {
+                        final reportes = repSnapshot.data ?? [];
+                        if (reportes.isEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'No se han registrado modificaciones o discrepancias entre encuestadores.',
+                                style: TextStyle(color: Colors.white54, fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: reportes.take(5).map((rep) {
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              color: rep.leidoAdmin
+                                  ? Colors.white.withValues(alpha: 0.03)
+                                  : Colors.orange.withValues(alpha: 0.08),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: rep.leidoAdmin
+                                      ? Colors.white10
+                                      : Colors.orange.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: ListTile(
+                                dense: true,
+                                leading: Icon(
+                                  Icons.sync_alt,
+                                  color: rep.leidoAdmin ? Colors.grey : Colors.orangeAccent,
+                                  size: 20,
+                                ),
+                                title: Text(
+                                  '${rep.nombrePersona} (CC ${rep.cedula})',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                subtitle: Text(
+                                  '${rep.encuestadorNombre} actualizó datos de ${rep.encuestadorAnteriorNombre}\n${rep.camposModificados}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                ),
+                                trailing: rep.leidoAdmin
+                                    ? const Icon(Icons.check, size: 16, color: Colors.white38)
+                                    : IconButton(
+                                        icon: const Icon(Icons.check_circle_outline, size: 18, color: Colors.greenAccent),
+                                        tooltip: 'Marcar visto',
+                                        onPressed: () => repo.marcarReporteLeido(rep.id),
+                                      ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
                     ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Último registro
                   if (_stats!['ultimo_nombre'] != '-') ...[
-                    _seccion('Último Registro'),
+                    _seccion(isAdmin ? 'Último Registro en la Plataforma' : 'Mi Último Registro'),
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -188,6 +396,11 @@ class _MobileStatsViewState extends State<MobileStatsView> {
                               children: [
                                 Text(_stats!['ultimo_nombre'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                                 Text('CC ${_stats!['ultimo_cedula']}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                if (isAdmin && (_stats!['ultimo_encuestador'] as String).isNotEmpty)
+                                  Text(
+                                    'Encuestador: ${_stats!['ultimo_encuestador']}',
+                                    style: const TextStyle(color: Colors.blueAccent, fontSize: 10),
+                                  ),
                                 if ((_stats!['ultimo_fecha'] as String).isNotEmpty)
                                   Text(
                                     _formatFechaHora(DateTime.tryParse(_stats!['ultimo_fecha']) ?? DateTime.now()),
@@ -201,9 +414,28 @@ class _MobileStatsViewState extends State<MobileStatsView> {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _miniIndicador(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color)),
+            Text(label, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8))),
+          ],
+        ),
+      ),
     );
   }
 

@@ -6,6 +6,8 @@ class PersonaHistorial {
   final String valorAnterior;
   final String valorNuevo;
   final DateTime fecha;
+  final String encuestadorId;
+  final String encuestadorNombre;
 
   PersonaHistorial({
     required this.id,
@@ -15,6 +17,8 @@ class PersonaHistorial {
     required this.valorAnterior,
     required this.valorNuevo,
     required this.fecha,
+    this.encuestadorId = '',
+    this.encuestadorNombre = '',
   });
 
   factory PersonaHistorial.fromMap(Map<String, dynamic> map) {
@@ -26,6 +30,8 @@ class PersonaHistorial {
       valorAnterior: map['valor_anterior'] ?? '',
       valorNuevo: map['valor_nuevo'] ?? '',
       fecha: DateTime.tryParse(map['fecha'] ?? '') ?? DateTime.now(),
+      encuestadorId: map['encuestador_id'] ?? '',
+      encuestadorNombre: map['encuestador_nombre'] ?? '',
     );
   }
 
@@ -38,6 +44,8 @@ class PersonaHistorial {
       'valor_anterior': valorAnterior,
       'valor_nuevo': valorNuevo,
       'fecha': fecha.toIso8601String(),
+      'encuestador_id': encuestadorId,
+      'encuestador_nombre': encuestadorNombre,
     };
   }
 

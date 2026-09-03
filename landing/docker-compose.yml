@@ -5,3 +5,6 @@ services:
     restart: always
     ports:
       - "80:80"
+    volumes:
+      - ./downloads:/usr/share/nginx/html/downloads
+

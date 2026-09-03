@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/persona.dart';
+import '../../providers/auth_provider.dart';
 import '../../repositories/persona_repository.dart';
 import '../../sync/sync_controller.dart';
 
@@ -34,6 +36,11 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
   String _tipoViaSeleccionado = 'Calle';
   bool _guardando = false;
 
+  // Control de cédula duplicada por el mismo encuestador
+  bool _cedulaYaRegistrada = false;
+  bool _verificandoCedula = false;
+  Timer? _debounceTimer;
+
   static const List<String> _tiposVia = [
     'Calle', 'Carrera', 'Avenida', 'Diagonal', 'Transversal', 'Circular', 'Vía', 'Manzana'
   ];
@@ -53,10 +60,52 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
     if (p?.fechaNacimiento != null && p!.fechaNacimiento.isNotEmpty) {
       _fechaNacimiento = DateTime.tryParse(p.fechaNacimiento);
     }
+
+    // Solo verificar cédula en modo nuevo registro
+    if (widget.persona == null) {
+      _cedulaController.addListener(_onCedulaChanged);
+    }
+  }
+
+  void _onCedulaChanged() {
+    final cedula = _cedulaController.text.trim();
+    _debounceTimer?.cancel();
+    if (cedula.length < 5) {
+      // Cédula muy corta: limpiar estado
+      if (_cedulaYaRegistrada || _verificandoCedula) {
+        setState(() {
+          _cedulaYaRegistrada = false;
+          _verificandoCedula = false;
+        });
+      }
+      return;
+    }
+    // Debounce de 600ms para no llamar en cada tecla
+    _debounceTimer = Timer(const Duration(milliseconds: 600), () {
+      _verificarCedula(cedula);
+    });
+  }
+
+  Future<void> _verificarCedula(String cedula) async {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final encuestadorId = auth.userId;
+    if (encuestadorId.isEmpty) return;
+
+    setState(() => _verificandoCedula = true);
+    final repo = context.read<PersonaRepository>();
+    final yaExiste = await repo.encuestadorYaRegistroCedula(cedula, encuestadorId);
+    if (!mounted) return;
+    setState(() {
+      _cedulaYaRegistrada = yaExiste;
+      _verificandoCedula = false;
+    });
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
+    _cedulaController.removeListener(_onCedulaChanged);
     _cedulaController.dispose();
     _nombreController.dispose();
     _telefonoController.dispose();
@@ -87,6 +136,30 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Bloqueo duro: el mismo encuestador no puede registrar la misma cédula dos veces
+    if (widget.persona == null && _cedulaYaRegistrada) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.block, color: Colors.white, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Ya registraste esta cédula. No puedes ingresarla dos veces.',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Color(0xFFB71C1C),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     if (_fechaNacimiento == null && !widget.esDuplicado) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -100,37 +173,15 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
     setState(() => _guardando = true);
     final repo = context.read<PersonaRepository>();
     final syncController = context.read<SyncController>();
+    final auth = context.read<AuthProvider>();
     final bool isOnline = syncController.hasInternet;
+
+    final encId = auth.userId;
+    final encNombre = auth.name;
+    final encEmail = auth.email;
 
     try {
       if (widget.persona == null) {
-        final existing = await repo.getPersonaByCedula(_cedulaController.text.trim());
-        if (existing != null) {
-          if (!mounted) return;
-          final accion = await _mostrarDialogoDuplicado(existing);
-          if (accion == 'actualizar') {
-            if (!mounted) return;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MobilePersonaFormView(
-                  persona: existing,
-                  esDuplicado: true,
-                ),
-              ),
-            );
-          } else if (accion == 'ver') {
-            if (!mounted) return;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MobilePersonaFormView(persona: existing),
-              ),
-            );
-          }
-          return;
-        }
-
         final nueva = Persona(
           id: const Uuid().v4(),
           cedula: _cedulaController.text.trim(),
@@ -149,13 +200,33 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           deviceId: 'mobile-${DateTime.now().millisecondsSinceEpoch}',
+          encuestadorId: encId,
+          encuestadorNombre: encNombre,
+          encuestadorEmail: encEmail,
         );
 
-        await repo.savePersona(nueva);
+        final resultado = await repo.guardarRegistroEncuesta(
+          nueva: nueva,
+          isOnline: isOnline,
+        );
 
-        if (isOnline) {
-          await repo.sincronizarPersonaManual(nueva);
+        if (!mounted) return;
+
+        final tipo = resultado['tipo'];
+        String mensaje = 'Registro guardado exitosamente';
+        if (!isOnline) {
+          mensaje = 'Registro guardado localmente (pendiente de sincronización)';
+        } else if (tipo == 'modificado') {
+          mensaje = 'Registro guardado y reporte de actualización enviado al Administrador';
         }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: isOnline ? Colors.green : Colors.blueGrey,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       } else if (widget.esDuplicado) {
         final actualizada = Persona(
           id: const Uuid().v4(),
@@ -173,6 +244,9 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           deviceId: 'mobile-${DateTime.now().millisecondsSinceEpoch}',
+          encuestadorId: encId,
+          encuestadorNombre: encNombre,
+          encuestadorEmail: encEmail,
         );
 
         await repo.actualizarConHistorial(
@@ -201,6 +275,9 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
           createdAt: widget.persona!.createdAt,
           updatedAt: DateTime.now(),
           deviceId: widget.persona!.deviceId,
+          encuestadorId: widget.persona!.encuestadorId.isNotEmpty ? widget.persona!.encuestadorId : encId,
+          encuestadorNombre: widget.persona!.encuestadorNombre.isNotEmpty ? widget.persona!.encuestadorNombre : encNombre,
+          encuestadorEmail: widget.persona!.encuestadorEmail.isNotEmpty ? widget.persona!.encuestadorEmail : encEmail,
         );
 
         await repo.savePersona(editada);
@@ -214,126 +291,6 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
-  }
-
-  Future<String?> _mostrarDialogoDuplicado(Persona existente) {
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: const Color(0xFF1E293B),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.person_search, size: 36, color: Colors.orange),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Cédula ya registrada',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ya existe un registro con la cédula ${existente.cedula}:',
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 14),
-
-              // Tarjeta de información existente
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                child: Column(
-                  children: [
-                    _infoChip(Icons.person, existente.nombreCompleto),
-                    _infoChip(Icons.phone, existente.telefono.isEmpty ? 'Sin teléfono' : existente.telefono),
-                    _infoChip(Icons.location_on, existente.ciudad.isEmpty ? 'Sin ciudad' : existente.ciudad),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                '¿Qué deseas hacer?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-
-              // Botón 1: ACTUALIZAR DATOS (Acción Principal)
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () => Navigator.pop(dialogCtx, 'actualizar'),
-                  icon: const Icon(Icons.update, size: 18),
-                  label: const Text(
-                    'ACTUALIZAR DATOS',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Botón 2: VER REGISTRO
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white24),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () => Navigator.pop(dialogCtx, 'ver'),
-                  icon: const Icon(Icons.visibility_outlined, size: 16),
-                  label: const Text('VER REGISTRO', style: TextStyle(fontSize: 12)),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Botón 3: CANCELAR
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx, 'cancel'),
-                child: const Text('CANCELAR', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _infoChip(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Icon(icon, size: 15, color: Colors.blueAccent),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
-        ],
-      ),
-    );
   }
 
   bool get _camposInmutables => widget.esDuplicado;
@@ -393,11 +350,55 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
             TextFormField(
               controller: _cedulaController,
               enabled: _esNuevo,
-              decoration: _deco('Cédula de Ciudadanía', icon: Icons.badge_outlined),
+              decoration: _deco(
+                'Cédula de Ciudadanía',
+                icon: Icons.badge_outlined,
+                suffix: _esNuevo && _verificandoCedula
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: Padding(
+                          padding: EdgeInsets.all(3),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
+                        ),
+                      )
+                    : _esNuevo && _cedulaYaRegistrada
+                        ? const Icon(Icons.block, color: Color(0xFFEF5350), size: 20)
+                        : null,
+              ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (v) => v!.trim().isEmpty ? 'La cédula es requerida' : null,
             ),
+
+            // Banner de alerta inline bajo el campo de cédula
+            if (_esNuevo && _cedulaYaRegistrada)
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB71C1C).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFEF5350).withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.block_rounded, color: Color(0xFFEF5350), size: 18),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Ya registraste esta cédula anteriormente. No es posible ingresarla de nuevo.',
+                        style: TextStyle(
+                          color: Color(0xFFEF9A9A),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             const SizedBox(height: 14),
 
             // ─ NOMBRE ─────────────────────────────────────────────
@@ -538,20 +539,30 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
               height: 50,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.esDuplicado ? Colors.green : Colors.blueAccent,
+                  backgroundColor: (widget.persona == null && _cedulaYaRegistrada)
+                      ? Colors.grey
+                      : widget.esDuplicado
+                          ? Colors.green
+                          : Colors.blueAccent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: _guardando ? null : _save,
+                onPressed: (_guardando || (widget.persona == null && _cedulaYaRegistrada)) ? null : _save,
                 icon: _guardando
                     ? const SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : Icon(widget.esDuplicado ? Icons.update : Icons.save_outlined),
+                    : (widget.persona == null && _cedulaYaRegistrada)
+                        ? const Icon(Icons.block)
+                        : Icon(widget.esDuplicado ? Icons.update : Icons.save_outlined),
                 label: Text(
-                  widget.esDuplicado ? 'GUARDAR ACTUALIZACIÓN' : 'GUARDAR REGISTRO',
+                  (widget.persona == null && _cedulaYaRegistrada)
+                      ? 'CÉDULA YA REGISTRADA'
+                      : widget.esDuplicado
+                          ? 'GUARDAR ACTUALIZACIÓN'
+                          : 'GUARDAR REGISTRO',
                   style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
               ),

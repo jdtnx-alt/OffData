@@ -39,15 +39,15 @@ class _LoginViewState extends State<LoginView> {
 
     if (!success) {
       setState(() {
-        _errorMessage = 'Correo o contraseña incorrectos. Verifica tus credenciales.';
+        _errorMessage = 'Correo o contraseña incorrectos. Verifica tus credenciales o el estado de tu cuenta.';
       });
     }
   }
 
-  void _llenarPredeterminadas() {
+  void _seleccionarCredenciales({required String email, required String pass}) {
     setState(() {
-      _emailController.text = AuthProvider.defaultEmail;
-      _passwordController.text = AuthProvider.defaultPassword;
+      _emailController.text = email;
+      _passwordController.text = pass;
       _errorMessage = null;
     });
   }
@@ -66,16 +66,16 @@ class _LoginViewState extends State<LoginView> {
                 children: [
                   // Logo / Ícono
                   Container(
-                    width: 90,
-                    height: 90,
+                    width: 86,
+                    height: 86,
                     decoration: BoxDecoration(
                       color: Colors.blueAccent.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.4), width: 2),
                     ),
-                    child: const Icon(Icons.cloud_sync_outlined, size: 48, color: Colors.blueAccent),
+                    child: const Icon(Icons.cloud_sync_outlined, size: 44, color: Colors.blueAccent),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
                   const Text(
                     'OffData',
                     style: TextStyle(
@@ -90,7 +90,7 @@ class _LoginViewState extends State<LoginView> {
                     style: TextStyle(fontSize: 12, color: Colors.white54),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
 
                   if (_errorMessage != null)
                     Container(
@@ -98,7 +98,7 @@ class _LoginViewState extends State<LoginView> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.redAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                       ),
                       child: Row(
@@ -134,7 +134,7 @@ class _LoginViewState extends State<LoginView> {
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) => v!.trim().isEmpty ? 'Ingresa tu correo' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // Campo Contraseña
                   TextFormField(
@@ -163,7 +163,7 @@ class _LoginViewState extends State<LoginView> {
                     ),
                     validator: (v) => v!.isEmpty ? 'Ingresa tu contraseña' : null,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
 
                   // Botón Iniciar Sesión
                   SizedBox(
@@ -188,31 +188,74 @@ class _LoginViewState extends State<LoginView> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
-                  // Chip de ayuda con credenciales
-                  ActionChip(
-                    avatar: const Icon(Icons.key, size: 14, color: Colors.blueAccent),
-                    label: const Text(
-                      'Rellenar credenciales de acceso',
-                      style: TextStyle(fontSize: 11, color: Colors.blueAccent),
+                  // Acceso Rápido por Roles
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Acceso rápido con cuentas de prueba:',
+                      style: TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.bold),
                     ),
-                    backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
-                    side: BorderSide(color: Colors.blueAccent.withValues(alpha: 0.3)),
-                    onPressed: _llenarPredeterminadas,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.admin_panel_settings, size: 14, color: Colors.amber),
+                        label: const Text('Admin', style: TextStyle(fontSize: 11, color: Colors.amber, fontWeight: FontWeight.bold)),
+                        backgroundColor: Colors.amber.withValues(alpha: 0.12),
+                        side: BorderSide(color: Colors.amber.withValues(alpha: 0.35)),
+                        onPressed: () => _seleccionarCredenciales(
+                          email: AuthProvider.defaultEmail,
+                          pass: AuthProvider.defaultPassword,
+                        ),
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.badge_outlined, size: 14, color: Colors.blueAccent),
+                        label: const Text('Encuestador 1', style: TextStyle(fontSize: 11, color: Colors.blueAccent, fontWeight: FontWeight.w600)),
+                        backgroundColor: Colors.blueAccent.withValues(alpha: 0.12),
+                        side: BorderSide(color: Colors.blueAccent.withValues(alpha: 0.35)),
+                        onPressed: () => _seleccionarCredenciales(
+                          email: AuthProvider.encuestador1Email,
+                          pass: AuthProvider.encuestador1Password,
+                        ),
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.badge_outlined, size: 14, color: Colors.greenAccent),
+                        label: const Text('Encuestador 2', style: TextStyle(fontSize: 11, color: Colors.greenAccent, fontWeight: FontWeight.w600)),
+                        backgroundColor: Colors.greenAccent.withValues(alpha: 0.12),
+                        side: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.35)),
+                        onPressed: () => _seleccionarCredenciales(
+                          email: AuthProvider.encuestador2Email,
+                          pass: AuthProvider.encuestador2Password,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
 
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                     ),
-                    child: const Text(
-                      'Usuario: admin@offdata.com\nClave: OffData2026*',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white38, fontSize: 10, height: 1.4),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('• Admin: admin@offdata.com (OffData2026*)', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                        SizedBox(height: 2),
+                        Text('• Encuestador 1: encuestador1@offdata.com (Encuestador2026*)', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                        SizedBox(height: 2),
+                        Text('• Encuestador 2: encuestador2@offdata.com (Encuestador2026*)', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                      ],
                     ),
                   ),
                 ],

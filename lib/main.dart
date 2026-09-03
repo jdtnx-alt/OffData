@@ -10,6 +10,7 @@ import 'sync/supabase_service.dart';
 import 'sync/sync_controller.dart';
 import 'repositories/persona_repository.dart';
 import 'repositories/contacto_repository.dart';
+import 'repositories/usuario_repository.dart';
 import 'ui/auth/login_view.dart';
 import 'ui/mobile/mobile_home_view.dart';
 import 'ui/desktop/desktop_dashboard_view.dart';
@@ -34,6 +35,10 @@ void main() async {
   try {
     final appDb = AppDatabase();
     await appDb.initialize();
+
+    // Initialize default users if not existing
+    final usuarioRepo = UsuarioRepository();
+    await usuarioRepo.inicializarUsuariosPorDefecto();
   } catch (e) {
     debugPrint('Warning: Database init error: $e');
   }
@@ -53,6 +58,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider.value(value: syncController),
+        Provider(create: (_) => UsuarioRepository()),
         Provider(create: (_) => PersonaRepository()),
         Provider(create: (_) => ContactoRepository()),
       ],

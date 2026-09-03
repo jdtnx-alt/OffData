@@ -15,6 +15,7 @@ class MobileProfileView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.lock_reset, color: Colors.blueAccent),
@@ -107,6 +108,7 @@ class MobileProfileView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.person_outline, color: Colors.blueAccent),
@@ -181,6 +183,7 @@ class MobileProfileView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.logout, color: Colors.redAccent, size: 36),
         title: const Text('Cerrar Sesión', textAlign: TextAlign.center),
         content: const Text(
@@ -208,6 +211,7 @@ class MobileProfileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final isAdmin = auth.isAdmin;
 
     return Scaffold(
       appBar: AppBar(
@@ -232,10 +236,16 @@ class MobileProfileView extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 42,
-                  backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                  backgroundColor: isAdmin
+                      ? Colors.amber.withValues(alpha: 0.2)
+                      : Colors.blueAccent.withValues(alpha: 0.2),
                   child: Text(
                     auth.name.isNotEmpty ? auth.name[0].toUpperCase() : 'U',
-                    style: const TextStyle(fontSize: 36, color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 36,
+                      color: isAdmin ? Colors.amber : Colors.blueAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -250,15 +260,37 @@ class MobileProfileView extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.blueAccent.withValues(alpha: 0.15),
+                    color: isAdmin
+                        ? Colors.amber.withValues(alpha: 0.15)
+                        : Colors.blueAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: isAdmin
+                          ? Colors.amber.withValues(alpha: 0.4)
+                          : Colors.blueAccent.withValues(alpha: 0.4),
+                    ),
                   ),
-                  child: const Text(
-                    'ADMINISTRADOR',
-                    style: TextStyle(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isAdmin ? Icons.admin_panel_settings : Icons.badge_outlined,
+                        size: 14,
+                        color: isAdmin ? Colors.amber : Colors.blueAccent,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isAdmin ? 'ADMINISTRADOR' : 'ENCUESTADOR',
+                        style: TextStyle(
+                          color: isAdmin ? Colors.amber : Colors.blueAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -281,7 +313,9 @@ class MobileProfileView extends StatelessWidget {
                 const Divider(height: 1, indent: 48),
                 _itemInfo(Icons.phone_outlined, 'Teléfono', auth.phone),
                 const Divider(height: 1, indent: 48),
-                _itemInfo(Icons.shield_outlined, 'Modo de Base de Datos', 'Local First & Supabase Sync'),
+                _itemInfo(Icons.shield_outlined, 'Rol en el Sistema', isAdmin ? 'Administrador (Acceso Total)' : 'Encuestador de Campo'),
+                const Divider(height: 1, indent: 48),
+                _itemInfo(Icons.cloud_sync_outlined, 'Base de Datos', 'Local-First SQLite & Supabase Sync'),
               ],
             ),
           ),

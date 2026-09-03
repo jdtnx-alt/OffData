@@ -16,6 +16,9 @@ class Persona {
   final DateTime updatedAt;
   final String deviceId;
   final bool isDeleted;
+  final String encuestadorId;
+  final String encuestadorNombre;
+  final String encuestadorEmail;
 
   Persona({
     required this.id,
@@ -35,6 +38,9 @@ class Persona {
     required this.updatedAt,
     required this.deviceId,
     this.isDeleted = false,
+    this.encuestadorId = '',
+    this.encuestadorNombre = '',
+    this.encuestadorEmail = '',
   });
 
   /// Dirección completa formateada para mostrar
@@ -67,6 +73,9 @@ class Persona {
       updatedAt: DateTime.tryParse(map['updated_at'] ?? '') ?? DateTime.now(),
       deviceId: map['device_id'] ?? '',
       isDeleted: (map['is_deleted'] ?? 0) == 1,
+      encuestadorId: map['encuestador_id'] ?? '',
+      encuestadorNombre: map['encuestador_nombre'] ?? '',
+      encuestadorEmail: map['encuestador_email'] ?? '',
     );
   }
 
@@ -89,6 +98,9 @@ class Persona {
       'updated_at': updatedAt.toIso8601String(),
       'device_id': deviceId,
       'is_deleted': isDeleted ? 1 : 0,
+      'encuestador_id': encuestadorId,
+      'encuestador_nombre': encuestadorNombre,
+      'encuestador_email': encuestadorEmail,
     };
   }
 
@@ -103,11 +115,14 @@ class Persona {
     int? syncVersion,
     bool? isSynced,
     bool? isDeleted,
+    String? encuestadorId,
+    String? encuestadorNombre,
+    String? encuestadorEmail,
   }) {
     return Persona(
       id: id,
       cedula: cedula,
-      nombreCompleto: nombreCompleto,  // inmutable
+      nombreCompleto: nombreCompleto, // inmutable
       fechaNacimiento: fechaNacimiento, // inmutable
       tipoVia: tipoVia ?? this.tipoVia,
       numeroVia: numeroVia ?? this.numeroVia,
@@ -122,6 +137,9 @@ class Persona {
       updatedAt: DateTime.now(),
       deviceId: deviceId,
       isDeleted: isDeleted ?? this.isDeleted,
+      encuestadorId: encuestadorId ?? this.encuestadorId,
+      encuestadorNombre: encuestadorNombre ?? this.encuestadorNombre,
+      encuestadorEmail: encuestadorEmail ?? this.encuestadorEmail,
     );
   }
 }

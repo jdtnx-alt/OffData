@@ -1,31 +1,40 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/usuario.dart';
+import '../repositories/usuario_repository.dart';
 
 class AuthProvider extends ChangeNotifier {
   static const String _kIsLoggedIn = 'auth_is_logged_in';
-  static const String _kEmail = 'auth_user_email';
-  static const String _kPassword = 'auth_user_password';
-  static const String _kName = 'auth_user_name';
-  static const String _kPhone = 'auth_user_phone';
+  static const String _kUserJson = 'auth_user_json';
 
   // Credenciales por defecto
-  static const String defaultEmail = 'admin@offdata.com';
-  static const String defaultPassword = 'OffData2026*';
-  static const String defaultName = 'Juan David';
-  static const String defaultPhone = '300 123 4567';
+  static const String defaultEmail = UsuarioRepository.adminEmail;
+  static const String defaultPassword = UsuarioRepository.adminPassword;
+
+  static const String encuestador1Email = UsuarioRepository.encuestador1Email;
+  static const String encuestador1Password = UsuarioRepository.encuestador1Password;
+
+  static const String encuestador2Email = UsuarioRepository.encuestador2Email;
+  static const String encuestador2Password = UsuarioRepository.encuestador2Password;
 
   bool _isLoggedIn = false;
-  String _email = defaultEmail;
-  String _name = defaultName;
-  String _phone = defaultPhone;
-  String _password = defaultPassword;
+  Usuario? _currentUser;
   bool _initialized = false;
+  final UsuarioRepository _usuarioRepo = UsuarioRepository();
 
   bool get isLoggedIn => _isLoggedIn;
   bool get initialized => _initialized;
-  String get email => _email;
-  String get name => _name;
-  String get phone => _phone;
+  Usuario? get currentUser => _currentUser;
+
+  bool get isAdmin => _currentUser?.isAdmin ?? false;
+  bool get isEncuestador => _currentUser?.isEncuestador ?? false;
+
+  String get userId => _currentUser?.id ?? '';
+  String get email => _currentUser?.email ?? '';
+  String get name => _currentUser?.nombre ?? '';
+  String get phone => _currentUser?.telefono ?? '';
+  String get role => _currentUser?.rol ?? 'encuestador';
 
   AuthProvider() {
     _loadState();
@@ -35,10 +44,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isLoggedIn = prefs.getBool(_kIsLoggedIn) ?? false;
-      _email = prefs.getString(_kEmail) ?? defaultEmail;
-      _password = prefs.getString(_kPassword) ?? defaultPassword;
-      _name = prefs.getString(_kName) ?? defaultName;
-      _phone = prefs.getString(_kPhone) ?? defaultPhone;
+      final userJson = prefs.getString(_kUserJson);
+
+      if (_isLoggedIn && userJson != null) {
+        final map = jsonDecode(userJson) as Map<String, dynamic>;
+        _currentUser = Usuario.fromMap(map);
+      } else {
+        _isLoggedIn = false;
+        _currentUser = null;
+      }
     } catch (e) {
       debugPrint('Error loading auth state: $e');
     } finally {
@@ -51,40 +65,58 @@ class AuthProvider extends ChangeNotifier {
     final cleanEmail = inputEmail.trim().toLowerCase();
     final cleanPass = inputPassword.trim();
 
-    if (cleanEmail == _email.toLowerCase() && cleanPass == _password) {
-      _isLoggedIn = true;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_kIsLoggedIn, true);
-      notifyListeners();
-      return true;
+    try {
+      final user = await _usuarioRepo.autenticar(cleanEmail, cleanPass);
+      if (user != null) {
+        _currentUser = user;
+        _isLoggedIn = true;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_kIsLoggedIn, true);
+        await prefs.setString(_kUserJson, jsonEncode(user.toMap()));
+
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Error en login: $e');
     }
     return false;
   }
 
   Future<void> logout() async {
     _isLoggedIn = false;
+    _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kIsLoggedIn, false);
+    await prefs.remove(_kUserJson);
     notifyListeners();
   }
 
   Future<bool> changePassword(String currentPass, String newPass) async {
-    if (currentPass.trim() != _password) {
+    if (_currentUser == null) return false;
+    if (currentPass.trim() != _currentUser!.password) {
       return false;
     }
-    _password = newPass.trim();
+
+    final updated = _currentUser!.copyWith(password: newPass.trim());
+    await _usuarioRepo.updateUsuario(updated);
+    _currentUser = updated;
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPassword, _password);
+    await prefs.setString(_kUserJson, jsonEncode(updated.toMap()));
     notifyListeners();
     return true;
   }
 
   Future<void> updateProfile({required String newName, required String newPhone}) async {
-    _name = newName.trim();
-    _phone = newPhone.trim();
+    if (_currentUser == null) return;
+    final updated = _currentUser!.copyWith(nombre: newName.trim(), telefono: newPhone.trim());
+    await _usuarioRepo.updateUsuario(updated);
+    _currentUser = updated;
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kName, _name);
-    await prefs.setString(_kPhone, _phone);
+    await prefs.setString(_kUserJson, jsonEncode(updated.toMap()));
     notifyListeners();
   }
 }

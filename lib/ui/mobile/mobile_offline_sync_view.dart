@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/persona.dart';
+import '../../providers/auth_provider.dart';
 import '../../repositories/persona_repository.dart';
 import '../../sync/sync_controller.dart';
 import '../widgets/network_badge.dart';
@@ -229,15 +230,23 @@ class _MobileOfflineSyncViewState extends State<MobileOfflineSyncView> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
     final repo = context.watch<PersonaRepository>();
+    final isAdmin = auth.isAdmin;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sincronización', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('Registros Guardados Sin Internet', style: TextStyle(fontSize: 11, color: Colors.white54)),
+            Text(
+              isAdmin ? 'Sincronización Global' : 'Mi Sincronización',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            Text(
+              isAdmin ? 'Todos los registros pendientes en la plataforma' : 'Tus registros guardados sin internet',
+              style: const TextStyle(fontSize: 11, color: Colors.white54),
+            ),
           ],
         ),
         actions: const [
@@ -250,7 +259,7 @@ class _MobileOfflineSyncViewState extends State<MobileOfflineSyncView> {
         ),
       ),
       body: StreamBuilder<List<Persona>>(
-        stream: repo.watchOfflinePersonas(),
+        stream: repo.watchOfflinePersonas(encuestadorId: isAdmin ? null : auth.userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

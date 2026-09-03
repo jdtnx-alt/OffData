@@ -65,4 +65,24 @@ class SupabaseService extends PowerSyncBackendConnector {
       return false;
     }
   }
+
+  /// Eliminar persona por cédula en Supabase
+  Future<bool> deletePersonaByCedula(String cedula) async {
+    try {
+      await client.from('personas').delete().eq('cedula', cedula);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Eliminar todas las personas en Supabase
+  Future<bool> deleteAllPersonas() async {
+    try {
+      await client.from('personas').delete().neq('id', '');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }
