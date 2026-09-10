@@ -6,6 +6,32 @@ import '../models/persona_historial.dart';
 import '../models/reporte_cambio.dart';
 import '../sync/supabase_service.dart';
 
+class ResultadoCoincidencia {
+  final bool hayConflicto;
+  final bool esMismoEncuestador;
+  final bool cedulaIdentica;
+  final bool cedulaSimilar; // distancia <= 3
+  final int distanciaCedula;
+  final bool nombreCoincide;
+  final bool fechaCoincide;
+  final Persona? personaExistente;
+  final String mensaje;
+
+  const ResultadoCoincidencia({
+    required this.hayConflicto,
+    this.esMismoEncuestador = false,
+    this.cedulaIdentica = false,
+    this.cedulaSimilar = false,
+    this.distanciaCedula = 999,
+    this.nombreCoincide = false,
+    this.fechaCoincide = false,
+    this.personaExistente,
+    this.mensaje = '',
+  });
+
+  static const sinConflicto = ResultadoCoincidencia(hayConflicto: false);
+}
+
 class PersonaRepository {
   final PowerSyncDatabase _db = AppDatabase().db;
   final _uuid = const Uuid();
@@ -92,6 +118,144 @@ class PersonaRepository {
       [cedula, encuestadorId],
     );
     return result != null;
+  }
+
+  /// Calcula la distancia de Levenshtein entre dos cadenas (por ejemplo números de documento)
+  static int calcularDistanciaLevenshtein(String s1, String s2) {
+    if (s1 == s2) return 0;
+    if (s1.isEmpty) return s2.length;
+    if (s2.isEmpty) return s1.length;
+
+    List<int> v0 = List<int>.generate(s2.length + 1, (i) => i);
+    List<int> v1 = List<int>.filled(s2.length + 1, 0);
+
+    for (int i = 0; i < s1.length; i++) {
+      v1[0] = i + 1;
+      for (int j = 0; j < s2.length; j++) {
+        final int cost = (s1.codeUnitAt(i) == s2.codeUnitAt(j)) ? 0 : 1;
+        v1[j + 1] = [
+          v1[j] + 1,
+          v0[j + 1] + 1,
+          v0[j] + cost,
+        ].reduce((a, b) => a < b ? a : b);
+      }
+      for (int j = 0; j <= s2.length; j++) {
+        v0[j] = v1[j];
+      }
+    }
+    return v1[s2.length];
+  }
+
+  /// Normaliza cadenas para comparación (sin tildes, minúsculas, espacios colapsados)
+  static String normalizarTexto(String texto) {
+    return texto
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[áàäâ]'), 'a')
+        .replaceAll(RegExp(r'[éèëê]'), 'e')
+        .replaceAll(RegExp(r'[íìïî]'), 'i')
+        .replaceAll(RegExp(r'[óòöô]'), 'o')
+        .replaceAll(RegExp(r'[úùüû]'), 'u')
+        .replaceAll(RegExp(r'[ñ]'), 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  /// Analiza toda la base de datos local para detectar posibles errores de digitación de encuestadores:
+  /// 1. Cédulas idénticas ya registradas (por el mismo u otro encuestador).
+  /// 2. Cédulas parecidas que cambien solo en 3 o menos dígitos Y cuyos datos (nombre y fecha de nacimiento) coincidan.
+  Future<ResultadoCoincidencia> buscarPosibleCoincidenciaInteligente({
+    required String cedula,
+    required String nombre,
+    required String fechaNacimiento,
+    required String encuestadorActualId,
+  }) async {
+    final cedulaLimpia = cedula.trim();
+    final nombreNorm = normalizarTexto(nombre);
+    final fechaLimpia = fechaNacimiento.trim();
+
+    if (cedulaLimpia.isEmpty) return ResultadoCoincidencia.sinConflicto;
+
+    // Obtener registros activos
+    final rows = await _db.getAll(
+      '''SELECT * FROM personas 
+         WHERE is_deleted = 0 
+         ORDER BY updated_at DESC''',
+    );
+    final listaPersonas = rows.map((r) => Persona.fromMap(r)).toList();
+
+    // 1. Coincidencia exacta de cédula
+    final exacta = listaPersonas.cast<Persona?>().firstWhere(
+      (p) => p != null && p.cedula.trim() == cedulaLimpia,
+      orElse: () => null,
+    );
+
+    if (exacta != null) {
+      final esMismo = exacta.encuestadorId == encuestadorActualId;
+      final nomExistenteNorm = normalizarTexto(exacta.nombreCompleto);
+      final mismoNombre = nombreNorm.isNotEmpty &&
+          (nomExistenteNorm == nombreNorm ||
+           nomExistenteNorm.contains(nombreNorm) ||
+           nombreNorm.contains(nomExistenteNorm));
+      final mismaFecha = fechaLimpia.isNotEmpty && exacta.fechaNacimiento.trim() == fechaLimpia;
+
+      if (esMismo) {
+        return ResultadoCoincidencia(
+          hayConflicto: true,
+          esMismoEncuestador: true,
+          cedulaIdentica: true,
+          distanciaCedula: 0,
+          nombreCoincide: mismoNombre,
+          fechaCoincide: mismaFecha,
+          personaExistente: exacta,
+          mensaje: 'Ya registraste esta cédula anteriormente.',
+        );
+      } else {
+        return ResultadoCoincidencia(
+          hayConflicto: true,
+          esMismoEncuestador: false,
+          cedulaIdentica: true,
+          distanciaCedula: 0,
+          nombreCoincide: mismoNombre,
+          fechaCoincide: mismaFecha,
+          personaExistente: exacta,
+          mensaje: 'Esta persona ya fue registrada en el sistema por otro encuestador (${exacta.encuestadorNombre.isNotEmpty ? exacta.encuestadorNombre : "otro usuario"}).',
+        );
+      }
+    }
+
+    // 2. Similitud inteligente: Cédulas parecidas (distancia <= 3) con coincidencia de datos
+    if (nombreNorm.length >= 3) {
+      for (final p in listaPersonas) {
+        final dist = calcularDistanciaLevenshtein(cedulaLimpia, p.cedula.trim());
+        if (dist <= 3 && dist > 0) {
+          final pNomNorm = normalizarTexto(p.nombreCompleto);
+          final bool nombreIgual = pNomNorm == nombreNorm ||
+              (nombreNorm.length >= 5 && pNomNorm.contains(nombreNorm)) ||
+              (pNomNorm.length >= 5 && nombreNorm.contains(pNomNorm));
+          final bool fechaIgual = fechaLimpia.isNotEmpty &&
+              p.fechaNacimiento.isNotEmpty &&
+              p.fechaNacimiento.trim() == fechaLimpia;
+
+          // Si coinciden tanto nombre como fecha de nacimiento (o nombre idéntico si fecha no está disponible)
+          if ((nombreIgual && fechaIgual) || (nombreIgual && (fechaLimpia.isEmpty || p.fechaNacimiento.isEmpty))) {
+            final esMismo = p.encuestadorId == encuestadorActualId;
+            return ResultadoCoincidencia(
+              hayConflicto: true,
+              esMismoEncuestador: esMismo,
+              cedulaIdentica: false,
+              cedulaSimilar: true,
+              distanciaCedula: dist,
+              nombreCoincide: nombreIgual,
+              fechaCoincide: fechaIgual,
+              personaExistente: p,
+              mensaje: 'Posible error de digitación en la cédula: los datos (nombre y fecha) coinciden con "${p.nombreCompleto}" (Cédula: ${p.cedula}), que cambia solo en $dist dígito(s). Ya se encuentra registrada dicha persona.',
+            );
+          }
+        }
+      }
+    }
+
+    return ResultadoCoincidencia.sinConflicto;
   }
 
   /// Historial de cambios para una cédula

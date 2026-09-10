@@ -36,8 +36,8 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
   String _tipoViaSeleccionado = 'Calle';
   bool _guardando = false;
 
-  // Control de cédula duplicada por el mismo encuestador
-  bool _cedulaYaRegistrada = false;
+  // Control de validación inteligente de cédula y duplicados
+  ResultadoCoincidencia? _coincidenciaInteligente;
   bool _verificandoCedula = false;
   Timer? _debounceTimer;
 
@@ -61,51 +61,63 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
       _fechaNacimiento = DateTime.tryParse(p.fechaNacimiento);
     }
 
-    // Solo verificar cédula en modo nuevo registro
+    // Monitorear en modo nuevo registro para validación inteligente en tiempo real
     if (widget.persona == null) {
-      _cedulaController.addListener(_onCedulaChanged);
+      _cedulaController.addListener(_triggerVerificacion);
+      _nombreController.addListener(_triggerVerificacion);
     }
   }
 
-  void _onCedulaChanged() {
+  void _triggerVerificacion() {
     final cedula = _cedulaController.text.trim();
     _debounceTimer?.cancel();
     if (cedula.length < 5) {
-      // Cédula muy corta: limpiar estado
-      if (_cedulaYaRegistrada || _verificandoCedula) {
+      if (_coincidenciaInteligente != null || _verificandoCedula) {
         setState(() {
-          _cedulaYaRegistrada = false;
+          _coincidenciaInteligente = null;
           _verificandoCedula = false;
         });
       }
       return;
     }
-    // Debounce de 600ms para no llamar en cada tecla
-    _debounceTimer = Timer(const Duration(milliseconds: 600), () {
-      _verificarCedula(cedula);
+    // Debounce de 500ms
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _ejecutarVerificacionInteligente();
     });
   }
 
-  Future<void> _verificarCedula(String cedula) async {
-    if (!mounted) return;
+  Future<ResultadoCoincidencia> _ejecutarVerificacionInteligente() async {
+    if (!mounted) return ResultadoCoincidencia.sinConflicto;
     final auth = context.read<AuthProvider>();
     final encuestadorId = auth.userId;
-    if (encuestadorId.isEmpty) return;
+    final cedula = _cedulaController.text.trim();
+    final nombre = _nombreController.text.trim();
+    final fecha = _fechaNacimiento != null ? _fechaNacimiento!.toIso8601String().split('T')[0] : '';
+
+    if (cedula.isEmpty) return ResultadoCoincidencia.sinConflicto;
 
     setState(() => _verificandoCedula = true);
     final repo = context.read<PersonaRepository>();
-    final yaExiste = await repo.encuestadorYaRegistroCedula(cedula, encuestadorId);
-    if (!mounted) return;
+    final coincidencia = await repo.buscarPosibleCoincidenciaInteligente(
+      cedula: cedula,
+      nombre: nombre,
+      fechaNacimiento: fecha,
+      encuestadorActualId: encuestadorId,
+    );
+
+    if (!mounted) return coincidencia;
     setState(() {
-      _cedulaYaRegistrada = yaExiste;
+      _coincidenciaInteligente = coincidencia.hayConflicto ? coincidencia : null;
       _verificandoCedula = false;
     });
+    return coincidencia;
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _cedulaController.removeListener(_onCedulaChanged);
+    _cedulaController.removeListener(_triggerVerificacion);
+    _nombreController.removeListener(_triggerVerificacion);
     _cedulaController.dispose();
     _nombreController.dispose();
     _telefonoController.dispose();
@@ -128,37 +140,109 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
       );
       if (picked != null) {
         setState(() => _fechaNacimiento = picked);
+        _triggerVerificacion();
       }
     } catch (e) {
       debugPrint('Error en DatePicker: $e');
     }
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // Bloqueo duro: el mismo encuestador no puede registrar la misma cédula dos veces
-    if (widget.persona == null && _cedulaYaRegistrada) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.block, color: Colors.white, size: 18),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Ya registraste esta cédula. No puedes ingresarla dos veces.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+  Future<void> _mostrarDialogoFallo(ResultadoCoincidencia c) async {
+    final persona = c.personaExistente;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFF1E293B),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                c.cedulaSimilar ? 'Posible Error de Cédula' : 'Persona Ya Registrada',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              c.mensaje,
+              style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13.5, height: 1.4),
+            ),
+            if (persona != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Datos registrados previamente:', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Text('Nombre: ${persona.nombreCompleto}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('Cédula: ${persona.cedula}', style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13, fontWeight: FontWeight.w700)),
+                    if (persona.fechaNacimiento.isNotEmpty)
+                      Text('Fecha Nac.: ${persona.fechaNacimiento}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    if (persona.encuestadorNombre.isNotEmpty)
+                      Text('Encuestador: ${persona.encuestadorNombre}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                  ],
                 ),
               ),
             ],
-          ),
-          backgroundColor: Color(0xFFB71C1C),
-          duration: Duration(seconds: 4),
+            const SizedBox(height: 12),
+            const Text(
+              'No se pueden ingresar los datos de la encuesta para evitar duplicados o inconsistencias en la base de datos.',
+              style: TextStyle(color: Color(0xFFF87171), fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ],
         ),
-      );
-      return;
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido / Corregir'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Validación inteligente de coincidencias antes de guardar
+    if (widget.persona == null) {
+      final coincidencia = await _ejecutarVerificacionInteligente();
+      if (coincidencia.hayConflicto) {
+        if (!mounted) return;
+        await _mostrarDialogoFallo(coincidencia);
+        return;
+      }
     }
+
+    if (!mounted) return;
 
     if (_fechaNacimiento == null && !widget.esDuplicado) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -362,36 +446,50 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
                         ),
                       )
-                    : _esNuevo && _cedulaYaRegistrada
-                        ? const Icon(Icons.block, color: Color(0xFFEF5350), size: 20)
+                    : _esNuevo && _coincidenciaInteligente != null
+                        ? const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF5350), size: 20)
                         : null,
               ),
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) => v!.trim().isEmpty ? 'La cédula es requerida' : null,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'La cédula es requerida';
+                final c = v.trim();
+                if (c.length < 6) return 'Debe tener al menos 6 dígitos';
+                if (c.length > 10) return 'No puede tener más de 10 dígitos';
+                return null;
+              },
             ),
 
             // Banner de alerta inline bajo el campo de cédula
-            if (_esNuevo && _cedulaYaRegistrada)
+            if (_esNuevo && _coincidenciaInteligente != null)
               Container(
                 margin: const EdgeInsets.only(top: 8, bottom: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFB71C1C).withValues(alpha: 0.12),
+                  color: const Color(0xFFB71C1C).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFEF5350).withValues(alpha: 0.5)),
+                  border: Border.all(color: const Color(0xFFEF5350).withValues(alpha: 0.6)),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.block_rounded, color: Color(0xFFEF5350), size: 18),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF5350), size: 18),
+                    ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Ya registraste esta cédula anteriormente. No es posible ingresarla de nuevo.',
-                        style: TextStyle(
+                        _coincidenciaInteligente!.mensaje,
+                        style: const TextStyle(
                           color: Color(0xFFEF9A9A),
                           fontSize: 12.5,
                           fontWeight: FontWeight.w500,
+                          height: 1.35,
                         ),
                       ),
                     ),
@@ -535,37 +633,44 @@ class _MobilePersonaFormViewState extends State<MobilePersonaFormView> {
             const SizedBox(height: 28),
 
             // ─ BOTÓN GUARDAR ──────────────────────────────────────
-            SizedBox(
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: (widget.persona == null && _cedulaYaRegistrada)
-                      ? Colors.grey
-                      : widget.esDuplicado
-                          ? Colors.green
-                          : Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: (_guardando || (widget.persona == null && _cedulaYaRegistrada)) ? null : _save,
-                icon: _guardando
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : (widget.persona == null && _cedulaYaRegistrada)
-                        ? const Icon(Icons.block)
-                        : Icon(widget.esDuplicado ? Icons.update : Icons.save_outlined),
-                label: Text(
-                  (widget.persona == null && _cedulaYaRegistrada)
-                      ? 'CÉDULA YA REGISTRADA'
-                      : widget.esDuplicado
-                          ? 'GUARDAR ACTUALIZACIÓN'
-                          : 'GUARDAR REGISTRO',
-                  style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                ),
-              ),
+            Builder(
+              builder: (context) {
+                final bool hayConflicto = widget.persona == null && (_coincidenciaInteligente?.hayConflicto ?? false);
+                return SizedBox(
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: hayConflicto
+                          ? Colors.grey.shade700
+                          : widget.esDuplicado
+                              ? Colors.green
+                              : Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: (_guardando || hayConflicto) ? null : _save,
+                    icon: _guardando
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : hayConflicto
+                            ? const Icon(Icons.block)
+                            : Icon(widget.esDuplicado ? Icons.update : Icons.save_outlined),
+                    label: Text(
+                      hayConflicto
+                          ? (_coincidenciaInteligente?.cedulaSimilar == true
+                              ? 'POSIBLE ERROR EN CÉDULA'
+                              : 'PERSONA YA REGISTRADA')
+                          : widget.esDuplicado
+                              ? 'GUARDAR ACTUALIZACIÓN'
+                              : 'GUARDAR REGISTRO',
+                      style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 24),
           ],

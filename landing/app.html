@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OffData - Sistema Web de Captura y Gestión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-body">
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+
+  <!-- ========================================== -->
+  <!-- VISTA 1: LOGIN (ADMIN Y ENCUESTADORES)     -->
+  <!-- ========================================== -->
+  <div id="view-login" class="login-view-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <a href="index.html" class="login-back-link" title="Volver a la landing page">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Inicio
+        </a>
+        <div class="login-brand">
+          <div class="login-logo-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <h1>OffData Web</h1>
+          <p class="login-subtitle">Sistema de Captura Offline & Sincronización</p>
+        </div>
+      </div>
+
+      <!-- Alerta de Error de Login -->
+      <div id="login-error-alert" class="login-error-alert" style="display: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="login-error-text">Credenciales incorrectas.</span>
+      </div>
+
+      <form id="form-login" class="login-form">
+        <div class="input-group">
+          <label for="login-email">Correo Electrónico</label>
+          <div class="input-with-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <input type="email" id="login-email" required placeholder="correo@offdata.com" autocomplete="username">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="login-password">Contraseña</label>
+          <div class="input-with-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input type="password" id="login-password" required placeholder="••••••••••••" autocomplete="current-password">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-login-submit">
+          <span>Ingresar al Sistema</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </form>
+
+      <!-- Botones de Acceso Rápido para Prueba -->
+      <div class="quick-access-section">
+        <div class="quick-access-divider">
+          <span>Acceso Rápido de Prueba</span>
+        </div>
+        <div class="quick-access-grid">
+          <button type="button" class="btn-quick-role role-admin" id="btn-quick-admin">
+            <span class="role-icon">🛡️</span>
+            <div class="role-desc">
+              <strong>Administrador</strong>
+              <small>admin@offdata.com (Vista Global)</small>
+            </div>
+          </button>
+          <button type="button" class="btn-quick-role role-enc1" id="btn-quick-enc1">
+            <span class="role-icon">📋</span>
+            <div class="role-desc">
+              <strong>Carlos M. (Encuestador 1)</strong>
+              <small>encuestador1@offdata.com (Vista Personal)</small>
+            </div>
+          </button>
+          <button type="button" class="btn-quick-role role-enc2" id="btn-quick-enc2">
+            <span class="role-icon">📋</span>
+            <div class="role-desc">
+              <strong>Ana G. (Encuestador 2)</strong>
+              <small>encuestador2@offdata.com (Vista Personal)</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VISTA 2: APLICACIÓN PRINCIPAL (DASHBOARD)  -->
+  <!-- ========================================== -->
+  <div id="view-app" class="app-view-wrapper" style="display: none;">
+    <!-- Barra Superior -->
+    <header class="app-topbar">
+      <div class="app-topbar-left">
+        <a href="index.html" class="app-brand-link">
+          <div class="app-logo-small">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <span class="app-brand-name">OffData <span class="app-brand-pc">PC</span></span>
+        </a>
+
+        <!-- Toggle Modo Online / Offline -->
+        <div class="app-net-pill">
+          <button type="button" id="app-net-toggle" class="btn-net-toggle" title="Alternar simulación de conectividad">
+            <span class="net-status-indicator online" id="app-net-dot"></span>
+            <span id="app-net-status-text">En Línea</span>
+            <span class="net-toggle-hint">Simular Corte</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="app-topbar-right">
+        <!-- Botón Estado y Configuración de Conexión Supabase Cloud -->
+        <button type="button" id="btn-open-cloud-config" class="btn-cloud-config" title="Configurar o verificar conexión directa con Supabase">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+          </svg>
+          <span id="cloud-status-text">Conectando Nube...</span>
+        </button>
+
+        <!-- Tarjeta de Usuario Activo -->
+        <div class="app-user-pill">
+          <div class="user-avatar" id="app-user-avatar">AD</div>
+          <div class="user-meta">
+            <span class="user-name" id="app-user-name">Administrador Principal</span>
+            <span class="user-role-badge" id="app-user-role">ADMINISTRADOR</span>
+          </div>
+        </div>
+
+        <button type="button" id="btn-logout" class="btn-app-logout" title="Cerrar sesión">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>Salir</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenido Principal: Grid 2 Columnas -->
+    <main class="app-main-container">
+      <!-- Columna 1: Formulario de Registro -->
+      <section class="app-col-form">
+        <div class="app-card form-card">
+          <div class="card-header">
+            <div class="card-header-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Registrar Persona Encuestada</h2>
+              <p class="card-subtitle">Formulario de captura con validación inteligente en tiempo real</p>
+            </div>
+          </div>
+
+          <!-- Alerta Inteligente de Similitud / Duplicado -->
+          <div id="pc-smart-alert" class="pc-smart-alert" style="display: none;">
+            <div class="smart-alert-icon" id="pc-alert-icon">⚠️</div>
+            <div class="smart-alert-content">
+              <strong id="pc-alert-title">Posible coincidencia detectada</strong>
+              <p id="pc-alert-desc">Se encontró una cédula muy parecida...</p>
+            </div>
+          </div>
+
+          <form id="pc-survey-form" class="pc-form" novalidate autocomplete="off">
+            <!-- Cédula de Ciudadanía -->
+            <div class="form-group">
+              <label for="pc-cedula">
+                Número de Cédula (C.C.)
+                <span class="badge-tag">Máximo 10 dígitos</span>
+              </label>
+              <div class="input-with-counter">
+                <input 
+                  type="text" 
+                  id="pc-cedula" 
+                  name="cedula" 
+                  placeholder="Ej: 1098765432" 
+                  maxlength="10" 
+                  inputmode="numeric" 
+                  required
+                >
+                <span id="pc-cedula-counter" class="char-counter">0/10</span>
+              </div>
+              <span class="field-hint">Solo dígitos numéricos. Verificación inteligente automática contra toda la base de datos.</span>
+            </div>
+
+            <!-- Nombres -->
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="pc-primer-nombre">Primer Nombre *</label>
+                <input type="text" id="pc-primer-nombre" placeholder="Ej: Juan" required>
+              </div>
+              <div class="form-group">
+                <label for="pc-segundo-nombre">Segundo Nombre</label>
+                <input type="text" id="pc-segundo-nombre" placeholder="Ej: David">
+              </div>
+            </div>
+
+            <!-- Apellidos -->
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="pc-primer-apellido">Primer Apellido *</label>
+                <input type="text" id="pc-primer-apellido" placeholder="Ej: Pérez" required>
+              </div>
+              <div class="form-group">
+                <label for="pc-segundo-apellido">Segundo Apellido</label>
+                <input type="text" id="pc-segundo-apellido" placeholder="Ej: Gómez">
+              </div>
+            </div>
+
+            <!-- Fecha de Nacimiento y Teléfono -->
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="pc-fecha-nacimiento">Fecha de Nacimiento *</label>
+                <input type="date" id="pc-fecha-nacimiento" required>
+              </div>
+              <div class="form-group">
+                <label for="pc-telefono">Teléfono de Contacto</label>
+                <input type="tel" id="pc-telefono" placeholder="Ej: 3101234567" maxlength="10" inputmode="numeric">
+              </div>
+            </div>
+
+            <!-- Dirección Estructurada -->
+            <div class="form-group">
+              <label>Dirección de Residencia</label>
+              <div class="dir-grid-pc">
+                <select id="pc-tipo-via">
+                  <option value="Calle">Calle</option>
+                  <option value="Carrera">Carrera</option>
+                  <option value="Avenida">Avenida</option>
+                  <option value="Diagonal">Diagonal</option>
+                  <option value="Transversal">Transversal</option>
+                </select>
+                <input type="text" id="pc-num-via" placeholder="Ej: 45 # 12 - 34" required>
+                <input type="text" id="pc-barrio" placeholder="Barrio (Ej: Centro)">
+                <input type="text" id="pc-ciudad" placeholder="Ciudad (Ej: Bucaramanga)" value="Bucaramanga">
+              </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="form-actions-pc">
+              <button type="submit" id="btn-pc-save" class="btn btn-primary btn-save-pc">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span>Guardar Encuesta</span>
+              </button>
+              <button type="button" id="btn-pc-reset" class="btn-secondary-pc">
+                Limpiar
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Columna 2: Registros y Estado de Sincronización -->
+      <section class="app-col-records">
+        <!-- Tarjetas de Estadísticas -->
+        <div class="app-stats-row">
+          <div class="app-stat-card">
+            <span class="stat-value" id="pc-stat-total">0</span>
+            <span class="stat-label" id="pc-stat-total-label">Mis Encuestas</span>
+          </div>
+          <div class="app-stat-card stat-pending-card">
+            <span class="stat-value" id="pc-stat-pending">0</span>
+            <span class="stat-label">Pendientes de Sync</span>
+          </div>
+          <div class="app-stat-card stat-synced-card">
+            <span class="stat-value" id="pc-stat-synced">0</span>
+            <span class="stat-label">Sincronizados Nube</span>
+          </div>
+        </div>
+
+        <!-- Barra de Herramientas de Registros -->
+        <div class="app-card records-card">
+          <div class="records-header">
+            <div>
+              <h3 class="records-title" id="pc-records-title">Personas Encuestadas</h3>
+              <p class="records-subtitle" id="pc-records-subtitle">Visualización según tu rol asignado</p>
+            </div>
+            <div class="records-actions">
+              <button type="button" id="btn-pc-sync-now" class="btn-sync-pc" title="Sincronizar cambios pendientes con la nube">
+                <svg class="sync-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                <span>Sincronizar</span>
+              </button>
+              <button type="button" id="btn-pc-clear-db" class="btn-clear-pc" title="Reiniciar base de datos a 0 registros">
+                Vaciar BD
+              </button>
+            </div>
+          </div>
+
+          <!-- Filtros de Pestaña (Mis Registros vs Global Equipo) -->
+          <div class="records-filter-tabs" id="records-filter-tabs">
+            <button type="button" class="filter-tab-btn active" id="tab-filter-mine">
+              Mis Encuestas (0)
+            </button>
+            <button type="button" class="filter-tab-btn" id="tab-filter-all">
+              🌐 Todo el Equipo (0)
+            </button>
+          </div>
+
+          <!-- Buscador -->
+          <div class="records-search-bar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="pc-search-input" placeholder="Buscar por cédula, nombre o ciudad...">
+          </div>
+
+          <!-- Lista de Registros -->
+          <div id="pc-records-container" class="pc-records-list">
+            <!-- Renderizado dinámico vía JS -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL DE BLOQUEO (DUPLICADO DETECTADO)     -->
+  <!-- ========================================== -->
+  <div id="pc-blocked-modal" class="pc-blocked-overlay" style="display: none;">
+    <div class="pc-blocked-card">
+      <div class="blocked-icon">🚫</div>
+      <h3 class="blocked-title">Persona Ya Registrada</h3>
+      <div class="blocked-body" id="pc-blocked-message">
+        <!-- Mensaje dinámico -->
+      </div>
+      <div class="blocked-actions">
+        <button type="button" id="btn-close-blocked" class="btn btn-primary btn-block-ack">
+          Entendido, Corregiré los Datos
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL DE CONFIGURACIÓN DE SUPABASE CLOUD   -->
+  <!-- ========================================== -->
+  <div id="cloud-config-modal" class="pc-blocked-overlay" style="display: none;">
+    <div class="cloud-config-card">
+      <div class="cloud-modal-header">
+        <div class="cloud-icon-badge">☁️</div>
+        <div>
+          <h3 class="cloud-title">Conexión a Base de Datos Central (Supabase)</h3>
+          <p class="cloud-subtitle">Para que el PC y la APK compartan los mismos datos en tiempo real</p>
+        </div>
+      </div>
+
+      <div class="cloud-modal-body">
+        <div class="form-group">
+          <label for="cfg-supabase-url">URL del Proyecto Supabase</label>
+          <input type="url" id="cfg-supabase-url" placeholder="https://xyzcompany.supabase.co">
+          <span class="field-hint">URL obtenida en el Dashboard de tu proyecto Supabase.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="cfg-supabase-key">Anon / Publishable Public Key</label>
+          <input type="text" id="cfg-supabase-key" placeholder="sb_publishable_... o eyJhbGciOi...">
+          <span class="field-hint">Clave pública segura de tu backend en Supabase.</span>
+        </div>
+
+        <div id="cloud-test-result" class="cloud-test-result" style="display: none;">
+          <!-- Resultado de la prueba -->
+        </div>
+      </div>
+
+      <div class="cloud-modal-footer">
+        <button type="button" id="btn-test-cloud" class="btn-secondary-pc">
+          Probar Conexión
+        </button>
+        <button type="button" id="btn-save-cloud" class="btn btn-primary">
+          Guardar y Conectar
+        </button>
+        <button type="button" id="btn-close-cloud" class="btn-clear-pc">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cliente oficial de Supabase JS desde CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app-pc.js"></script>
+</body>
+</html>
